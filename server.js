@@ -14,17 +14,21 @@ const RAY = 1e27;
 const tokenMapping = {
   // Mapping token contract addresses (lowercased) to CoinGecko IDs
   // NOTE: Update it when necessary and restart the server
+  // Sepolia
   "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": "usd-coin",        // USDC
   "0xdac17f958d2ee523a2206206994597c13d831ec7": "tether",          // USDT
   "0x6b175474e89094c44da98b954eedeac495271d0f": "dai",             // DAI
   "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": "weth",            // WETH
-  "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599": "wrapped-bitcoin"  // WBTC
+  "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599": "wrapped-bitcoin",  // WBTC
+  // Base
+  "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": "usd-coin",        // USDC
+  "0x50c5725949a6f0c72e6c4a641f24049a917db0cb": "dai",             // DAI
 };
 
 // Fetch Uniswap V2 Pair Data from The Graph
 async function fetchUniswapPairData(pairAddress) {
   const graphApiKey = process.env.GRAPH_API_KEY;
-  const uniswapV2SubgraphId = "EYCKATKGBKLWvSfwvBjzfCBmGwYNdVkduYXVivCsLRFu";
+  const uniswapV2SubgraphId = process.env.UNISWAP_SUBGRAPH_ID;
   
   const url = `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/${uniswapV2SubgraphId}`;
   const query = `
@@ -59,8 +63,8 @@ async function fetchUniswapPairData(pairAddress) {
 // Fetch AAVE Reserve Data from The Graph
 async function fetchAaveReserveData(underlyingAsset) {
   const graphApiKey = process.env.GRAPH_API_KEY;
-  const uniswapV2SubgraphId = "Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g";
-  const url = `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/${uniswapV2SubgraphId}`;
+  const aaveSubgraphId = process.env.AAVE_SUBGRAPH_ID;
+  const url = `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/${aaveSubgraphId}`;
   const query = `
     {
       reserves(where: { underlyingAsset: "${underlyingAsset.toLowerCase()}" }) {

@@ -4,7 +4,9 @@
   "description": "API to fetch and calculate DeFi asset prices",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "docker build -t defi-price-api .",
+    "start": "docker run -d -p 3000:3000 --name defi-price-api defi-price-api"
   },
   "author": "koteld",
   "license": "ISC",

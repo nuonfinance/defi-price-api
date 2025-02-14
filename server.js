@@ -1,6 +1,7 @@
 // server.js
 
 const express = require('express');
+const { ethers } = require('ethers');
 const axios = require('axios');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -9,6 +10,22 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // RAY is 1e27 in Aave.
 const RAY = 1e27;
+const scale = BigInt(1e18);
+
+const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+
+// Minimal Uniswap V2 Pair ABI
+const uniswapPairAbi = [
+  "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+  "function token0() external view returns (address)",
+  "function token1() external view returns (address)",
+  "function totalSupply() external view returns (uint256)"
+];
+
+// Minimal ABI for AggregatorV3Interface
+const aggregatorAbi = [
+  "function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRoundOut)"
+];
 
 // Token Mapping for CoinGecko
 const tokenMapping = {
@@ -24,6 +41,14 @@ const tokenMapping = {
   "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": "usd-coin",        // USDC
   "0x50c5725949a6f0c72e6c4a641f24049a917db0cb": "dai",             // DAI
 };
+
+// Fetch latest round data from AggregatorV3Interface
+async function fetchCurrentPrice(aggregatorAddress) {
+  const priceFeed = new ethers.Contract(aggregatorAddress, aggregatorAbi, provider);
+  const roundData = await priceFeed.latestRoundData();
+  
+  return roundData.answer;
+}
 
 // Fetch Uniswap V2 Pair Data from The Graph
 async function fetchUniswapPairData(pairAddress) {
@@ -134,6 +159,33 @@ async function getLPTokenPrice(pairAddress) {
   return totalValue / totalSupply;
 }
 
+// [DO NOT USE]
+async function getLPTokenPriceOnChain(pairAddress) {
+  const pairContract = new ethers.Contract(pairAddress, uniswapPairAbi, provider);
+  
+  // Get token addresses and corresponding CoinGecko IDs.
+  const token0Address = await pairContract.token0();
+  const token1Address = await pairContract.token1();
+  const coinId0 = tokenMapping[token0Address.toLowerCase()];
+  const coinId1 = tokenMapping[token1Address.toLowerCase()];
+  
+  if (!coinId0 || !coinId1) {
+    throw new Error("Token mapping not found for one or both tokens");
+  }
+  
+  // Fetch USD prices.
+  const price0 = BigInt(Math.floor(await fetchCoinGeckoPrice(coinId0) * 1e18));
+  const price1 = BigInt(Math.floor(await fetchCoinGeckoPrice(coinId1) * 1e18));
+  
+  // Parse reserves and totalSupply as numbers.
+  const [reserve0, reserve1, ] = await pairContract.getReserves();
+  const totalSupply = await pairContract.totalSupply();
+  
+  // Calculate the total pool value in USD and then the LP token price.
+  const totalValue = (reserve0 * price0 + reserve1 * price1) / scale;
+  return Number(totalValue / totalSupply) / 1e18;
+}
+
 async function getAAVETokenPrice(reserveAddress) {
   const reserveData = await fetchAaveReserveData(reserveAddress);
   // Convert liquidityIndex (in RAY) to a number.
@@ -177,6 +229,73 @@ app.get('/aavePrice', async (req, res) => {
     return res.json({
       aTokenPrice
     });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint for a fake flat price
+// Usage: GET /fakePrice/flat?aggregatorAddress=<address>
+app.get("/fakePrice/flat", async (req, res) => {
+  try {
+    const { aggregatorAddress } = req.query;
+    if (!aggregatorAddress) {
+      return res.status(400).json({ error: "Missing 'aggregatorAddress' query parameter" });
+    }
+    const currentPrice = BigInt(await fetchCurrentPrice(aggregatorAddress));
+    res.json({ price: Number(currentPrice) / 1e18 });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint for a fake increasing price
+// Query parameter: step in wei (optional, default = 1 gwei)
+// Usage: GET /fakePrice/increase?aggregatorAddress=<address>&step=<step>
+app.get("/fakePrice/increase", async (req, res) => {
+  try {
+    const { aggregatorAddress } = req.query;
+    if (!aggregatorAddress) {
+      return res.status(400).json({ error: "Missing 'aggregatorAddress' query parameter" });
+    }
+    const step = BigInt(req.query.step) || BigInt(1_000_000_000);
+    const currentPrice = BigInt(await fetchCurrentPrice(aggregatorAddress));
+    res.json({ price: Number(currentPrice + step) / 1e18 });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint for a fake decreasing price
+// Query parameter: step in wei (optional, default = 1 gwei)
+// Usage: GET /fakePrice/decrease?aggregatorAddress=<address>&step=<step>
+app.get("/fakePrice/decrease", async (req, res) => {
+  try {
+    const { aggregatorAddress } = req.query;
+    if (!aggregatorAddress) {
+      return res.status(400).json({ error: "Missing 'aggregatorAddress' query parameter" });
+    }
+    const step = BigInt(req.query.step) || BigInt(1_000_000_000);
+    const currentPrice = BigInt(await fetchCurrentPrice(aggregatorAddress));
+    res.json({ price: Math.max(0, Number(currentPrice - step) / 1e18) });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint for a fake fluctuating price.
+// Query parameter: range in BPS (optional, default = 1000 means +/-10% fluctuation)
+// Usage: GET /fakePrice/fluctuating?aggregatorAddress=<address>&range=<range>
+app.get("/fakePrice/fluctuating", async (req, res) => {
+  try {
+    const { aggregatorAddress } = req.query;
+    if (!aggregatorAddress) {
+      return res.status(400).json({ error: "Missing 'aggregatorAddress' query parameter" });
+    }
+    const range = Number(req.query.range) || 1000;
+    const randomFactor = (Math.random() * 2 - 1) * (range / 10000); // -range% and +range%
+    const currentPrice = BigInt(await fetchCurrentPrice(aggregatorAddress));
+    res.json({ price: (Number(currentPrice) * (1 + randomFactor)) / 1e18 });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

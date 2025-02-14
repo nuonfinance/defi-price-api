@@ -12,9 +12,17 @@ const PORT = process.env.PORT || 3000;
 const RAY = 1e27;
 const scale = BigInt(1e18);
 
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+const sourceProvider = new ethers.JsonRpcProvider(process.env.SOURCE_RPC_URL);
+const targetProvider = new ethers.JsonRpcProvider(process.env.TARGET_RPC_URL);
 
-// Minimal Uniswap V2 Pair ABI
+// Minimal ABI for Harvest Pool
+const harvestPoolAbi = [
+  "function getPricePerFullShare() view returns (uint256)",
+  "function underlying() view returns (address)",
+  "function decimals() view returns (uint256)"
+];
+
+// Minimal ABI for Uniswap V2 Pair ABI
 const uniswapPairAbi = [
   "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
   "function token0() external view returns (address)",
@@ -44,7 +52,7 @@ const tokenMapping = {
 
 // Fetch latest round data from AggregatorV3Interface
 async function fetchCurrentPrice(aggregatorAddress) {
-  const priceFeed = new ethers.Contract(aggregatorAddress, aggregatorAbi, provider);
+  const priceFeed = new ethers.Contract(aggregatorAddress, aggregatorAbi, targetProvider);
   const roundData = await priceFeed.latestRoundData();
   
   return roundData.answer;
@@ -161,7 +169,7 @@ async function getLPTokenPrice(pairAddress) {
 
 // [DO NOT USE]
 async function getLPTokenPriceOnChain(pairAddress) {
-  const pairContract = new ethers.Contract(pairAddress, uniswapPairAbi, provider);
+  const pairContract = new ethers.Contract(pairAddress, uniswapPairAbi, sourceProvider);
   
   // Get token addresses and corresponding CoinGecko IDs.
   const token0Address = await pairContract.token0();
@@ -184,6 +192,24 @@ async function getLPTokenPriceOnChain(pairAddress) {
   // Calculate the total pool value in USD and then the LP token price.
   const totalValue = (reserve0 * price0 + reserve1 * price1) / scale;
   return Number(totalValue / totalSupply) / 1e18;
+}
+
+// Compute Harvest Pool asset price
+async function getHarvestPoolAssetPrice(poolAddress) {
+  const harvestPoolContract = new ethers.Contract(poolAddress, harvestPoolAbi, sourceProvider);
+  const pricePerFullShareBN = await harvestPoolContract.getPricePerFullShare();
+  const underlyingAddress = await harvestPoolContract.underlying();
+  const decimals = await harvestPoolContract.decimals();
+  
+  const coinId = tokenMapping[underlyingAddress.toLowerCase()];
+  if (!coinId) {
+    throw new Error("Token mapping not found for underlying asset in Harvest Pool");
+  }
+  const underlyingPriceUSD = await fetchCoinGeckoPrice(coinId);
+  
+  const pricePerFullShare = parseFloat(pricePerFullShareBN.toString()) / (10 ** Number(decimals));
+  // Asset price in USD: each share is worth (pricePerFullShare * underlyingPrice)
+  return (pricePerFullShare * underlyingPriceUSD);
 }
 
 async function getAAVETokenPrice(reserveAddress) {
@@ -228,6 +254,23 @@ app.get('/aavePrice', async (req, res) => {
     const aTokenPrice = await getAAVETokenPrice(reserveAddress);
     return res.json({
       aTokenPrice
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint for fetching Harvest Pool asset price.
+// Usage: GET /harvestPrice?poolAddress=<harvest_pool_address>
+app.get('/harvestPrice', async (req, res) => {
+  try {
+    const { poolAddress } = req.query;
+    if (!poolAddress) {
+      return res.status(400).json({ error: "Missing 'poolAddress' query parameter" });
+    }
+    const assetPrice = await getHarvestPoolAssetPrice(poolAddress);
+    return res.json({
+      assetPrice
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

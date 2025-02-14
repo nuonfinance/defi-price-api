@@ -234,6 +234,27 @@ app.get('/aavePrice', async (req, res) => {
   }
 });
 
+// Endpoint for fetching a token price.
+// Usage: GET /tokenPrice?tokenAddress=<token_address>
+app.get('/tokenPrice', async (req, res) => {
+  try {
+    const { tokenAddress } = req.query;
+    if (!tokenAddress) {
+      return res.status(400).json({ error: "Missing 'tokenAddress' query parameter" });
+    }
+    const coinId = tokenMapping[tokenAddress.toLowerCase()];
+    if (!coinId) {
+      return res.status(400).json({ error: "Token mapping not found for the provided token address" });
+    }
+    const tokenPrice = await fetchCoinGeckoPrice(coinId);
+    return res.json({
+      tokenPrice
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint for a fake flat price
 // Usage: GET /fakePrice/flat?aggregatorAddress=<address>
 app.get("/fakePrice/flat", async (req, res) => {

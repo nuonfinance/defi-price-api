@@ -34,6 +34,12 @@ const uniswapV2Abi = [
   "function totalSupply() view returns (uint256)"
 ];
 
+const iporVaultAbi = [
+  "function asset() view returns (address)",
+  "function convertToAssets(uint256 shares) external view returns (uint256)",
+  "function decimals() external view returns (uint8)"
+];
+
 const erc20Abi = [
   "function decimals() view returns (uint256)"
 ];
@@ -76,6 +82,7 @@ module.exports = {
   beefyPoolAbi,
   fourPoolAbi,
   uniswapV2Abi,
+  iporVaultAbi,
   erc20Abi,
   aggregatorAbi,
   tokenMapping,

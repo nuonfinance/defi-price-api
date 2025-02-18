@@ -7,8 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "docker build -t defi-price-api .",
     "start": "docker run -d -p 3000:3000 --name defi-price-api defi-price-api",
+    "start:test": "docker run -d -p 3030:3000 --env-file .env.test --name defi-price-api-test defi-price-api",
     "stop": "docker stop defi-price-api",
-    "remove": "docker rm defi-price-api"
+    "stop:test": "docker stop defi-price-api-test",
+    "remove": "docker rm defi-price-api",
+    "remove:test": "docker rm defi-price-api-test"
   },
   "author": "koteld",
   "license": "ISC",

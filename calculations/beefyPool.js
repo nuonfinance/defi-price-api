@@ -1,6 +1,6 @@
 const { ethers } = require('ethers');
 
-const { DEFAULT_SCALE_FACTOR_BN, beefyPoolAbi, tokenMapping, erc20Abi } = require('../config');
+const { beefyPoolAbi, tokenMapping, erc20Abi, USDC_COIN_ID } = require('../config');
 const { fetchCoinGeckoPriceBN } = require('../services/coingecko');
 const { getFourPoolAssetPrice, isFourPool } = require('./fourPool');
 
@@ -27,7 +27,9 @@ async function getBeefyPoolAssetPrice(poolAddress, provider) {
     underlyingPriceBN = (await fetchCoinGeckoPriceBN(coinId)) * scaleFactor;
   }
   
-  return (pricePerFullShareBN * underlyingPriceBN) / DEFAULT_SCALE_FACTOR_BN;
+  const usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  
+  return (pricePerFullShareBN * underlyingPriceBN) / usdcPriceBN;
 }
 
 module.exports = { getBeefyPoolAssetPrice };

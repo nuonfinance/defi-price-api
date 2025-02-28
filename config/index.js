@@ -9,6 +9,7 @@ const MAX_BPS_BN = BigInt(10_000);
 const RAY_BN = BigInt(1e27);
 const DEFAULT_SCALE = 18;
 const DEFAULT_SCALE_FACTOR_BN = BigInt(10 ** DEFAULT_SCALE);
+const USDC_COIN_ID = "usd-coin";
 
 // Minimal ABIs:
 const aavePoolAbi = [
@@ -76,6 +77,7 @@ module.exports = {
   RAY_BN,
   DEFAULT_SCALE,
   DEFAULT_SCALE_FACTOR_BN,
+  USDC_COIN_ID,
   sourceProvider,
   targetProvider,
   aavePoolAbi,

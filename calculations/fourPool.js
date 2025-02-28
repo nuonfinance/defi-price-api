@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 
 const {
   DEFAULT_SCALE,
-  DEFAULT_SCALE_FACTOR_BN,
+  USDC_COIN_ID,
   fourPoolAbi,
   erc20Abi,
   tokenMapping
@@ -39,8 +39,10 @@ async function getFourPoolAssetPrice(poolAddress, provider) {
     totalValueBN = totalValueBN + coinValueBN;
   }
   
+  const usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  
   const weightedAveragePriceBN = totalValueBN / totalNominalScaledBN;
-  return (virtualPriceBN * weightedAveragePriceBN) / DEFAULT_SCALE_FACTOR_BN;
+  return (virtualPriceBN * weightedAveragePriceBN) / usdcPriceBN;
 }
 
 async function isFourPool(underlyingAddress, provider) {

@@ -9,8 +9,8 @@ async function getBeefyPoolAssetPrice(poolAddress, provider) {
   const pricePerFullShareBN = await beefyPoolContract.getPricePerFullShare();
   const underlyingAddress = (await beefyPoolContract.want()).toLowerCase();
   
-  let underlyingPriceBN = 1n;
-  let usdcPriceBN = 1n;
+  let underlyingPriceBN = BigInt(1e18);
+  let usdcPriceBN = BigInt(1e18);
   
   // TODO: Support more pool types
   if (await isFourPool(underlyingAddress, provider)) {

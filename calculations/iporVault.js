@@ -19,8 +19,8 @@ async function getIPORVaultAssetPrice(vaultAddress, provider) {
     throw new Error(`Token mapping not found for coin at address ${underlyingAddress.toLowerCase()}`);
   }
   
-  let underlyingPriceBN = 1n;
-  let usdcPriceBN = 1n;
+  let underlyingPriceBN = BigInt(1e18);
+  let usdcPriceBN = BigInt(1e18);
   
   if (coinId !== USDC_COIN_ID) {
     underlyingPriceBN = await fetchCoinGeckoPriceBN(coinId);

@@ -4,21 +4,20 @@
   "description": "API to fetch and calculate DeFi asset prices",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "docker build -t defi-price-api .",
     "start": "docker run -d -p 3000:3000 --name defi-price-api defi-price-api",
-    "start:test": "docker run -d -p 3030:3000 --env-file .env.test --name defi-price-api-test defi-price-api",
     "stop": "docker stop defi-price-api",
-    "stop:test": "docker stop defi-price-api-test",
     "remove": "docker rm defi-price-api",
-    "remove:test": "docker rm defi-price-api-test"
+    "restart": "npm run stop && npm run remove && npm run build && npm run start"
   },
   "author": "koteld",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.9",
+    "axios-cache-interceptor": "^1.6.2",
     "dotenv": "^16.4.7",
     "ethers": "^6.13.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "node-cache": "^5.1.2"
   }
 }

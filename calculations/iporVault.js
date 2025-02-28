@@ -1,6 +1,6 @@
 const { ethers } = require('ethers');
 
-const { iporVaultAbi, erc20Abi, tokenMapping, DEFAULT_SCALE, DEFAULT_SCALE_FACTOR_BN } = require('../config');
+const { iporVaultAbi, erc20Abi, tokenMapping, DEFAULT_SCALE, USDC_COIN_ID } = require('../config');
 const { fetchCoinGeckoPriceBN } = require('../services/coingecko');
 
 async function getIPORVaultAssetPrice(vaultAddress, provider) {
@@ -18,9 +18,16 @@ async function getIPORVaultAssetPrice(vaultAddress, provider) {
   if (!coinId) {
     throw new Error(`Token mapping not found for coin at address ${underlyingAddress.toLowerCase()}`);
   }
-  const underlyingPriceBN = await fetchCoinGeckoPriceBN(coinId);
   
-  return (underlyingAmountScaledBN * underlyingPriceBN) / DEFAULT_SCALE_FACTOR_BN;
+  let underlyingPriceBN = BigInt(1e18);
+  let usdcPriceBN = BigInt(1e18);
+  
+  if (coinId !== USDC_COIN_ID) {
+    underlyingPriceBN = await fetchCoinGeckoPriceBN(coinId);
+    usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  }
+  
+  return (underlyingAmountScaledBN * underlyingPriceBN) / usdcPriceBN;
 }
 
 module.exports = { getIPORVaultAssetPrice };

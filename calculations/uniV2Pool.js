@@ -3,8 +3,10 @@ const { ethers } = require('ethers');
 const {
   DEFAULT_SCALE,
   DEFAULT_SCALE_FACTOR_BN,
+  USDC_COIN_ID,
   uniswapV2Abi,
-  tokenMapping, erc20Abi
+  erc20Abi,
+  tokenMapping
 } = require('../config');
 const { fetchCoinGeckoPriceBN } = require('../services/coingecko');
 
@@ -25,6 +27,7 @@ async function getUniV2PoolAssetPrice(poolAddress, provider) {
   
   const price0 = await fetchCoinGeckoPriceBN(coinId0);
   const price1 = await fetchCoinGeckoPriceBN(coinId1);
+  const usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
   
   const [reserve0, reserve1] = await pairContract.getReserves();
   const totalSupply = await pairContract.totalSupply();
@@ -39,7 +42,7 @@ async function getUniV2PoolAssetPrice(poolAddress, provider) {
   const reserveScaled1 = reserve1 * scaleFactor1;
   
   const totalValue = reserveScaled0 * price0 + reserveScaled1 * price1;
-  return totalValue / totalSupply;
+  return (totalValue * DEFAULT_SCALE_FACTOR_BN) / totalSupply / usdcPriceBN;
 }
 
 module.exports = { getUniV2PoolAssetPrice };

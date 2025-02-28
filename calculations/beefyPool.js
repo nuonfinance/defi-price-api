@@ -1,6 +1,6 @@
 const { ethers } = require('ethers');
 
-const { beefyPoolAbi, tokenMapping, erc20Abi, USDC_COIN_ID } = require('../config');
+const { beefyPoolAbi, tokenMapping, erc20Abi, USDC_COIN_ID, DEFAULT_SCALE_FACTOR_BN } = require('../config');
 const { fetchCoinGeckoPriceBN } = require('../services/coingecko');
 const { getFourPoolAssetPrice, isFourPool } = require('./fourPool');
 
@@ -15,8 +15,7 @@ async function getBeefyPoolAssetPrice(poolAddress, provider) {
   // TODO: Support more pool types
   if (await isFourPool(underlyingAddress, provider)) {
     underlyingPriceBN = await getFourPoolAssetPrice(underlyingAddress, provider);
-    usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
-    return (pricePerFullShareBN * underlyingPriceBN) / usdcPriceBN;
+    return (pricePerFullShareBN * underlyingPriceBN) / DEFAULT_SCALE_FACTOR_BN;
   }
   
   // Otherwise, assume it's a regular ERC20

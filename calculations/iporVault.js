@@ -18,8 +18,14 @@ async function getIPORVaultAssetPrice(vaultAddress, provider) {
   if (!coinId) {
     throw new Error(`Token mapping not found for coin at address ${underlyingAddress.toLowerCase()}`);
   }
-  const underlyingPriceBN = await fetchCoinGeckoPriceBN(coinId);
-  const usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  
+  let underlyingPriceBN = 1n;
+  let usdcPriceBN = 1n;
+  
+  if (coinId !== USDC_COIN_ID) {
+    underlyingPriceBN = await fetchCoinGeckoPriceBN(coinId);
+    usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  }
   
   return (underlyingAmountScaledBN * underlyingPriceBN) / usdcPriceBN;
 }

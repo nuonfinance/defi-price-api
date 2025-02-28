@@ -9,27 +9,33 @@ async function getBeefyPoolAssetPrice(poolAddress, provider) {
   const pricePerFullShareBN = await beefyPoolContract.getPricePerFullShare();
   const underlyingAddress = (await beefyPoolContract.want()).toLowerCase();
   
-  let underlyingPriceBN;
+  let underlyingPriceBN = 1n;
+  let usdcPriceBN = 1n;
+  
+  // TODO: Support more pool types
   if (await isFourPool(underlyingAddress, provider)) {
     underlyingPriceBN = await getFourPoolAssetPrice(underlyingAddress, provider);
-  } else {
-    // TODO: Support more pool types
-    // Otherwise, assume it's a regular ERC20
-    const erc20Contract = new ethers.Contract(underlyingAddress, erc20Abi, provider);
-    const underlyingDecimals = await erc20Contract.decimals();
-    const vaultDecimals = await beefyPoolContract.decimals();
-    const scaleFactor = BigInt(10) ** BigInt(vaultDecimals - underlyingDecimals);
-    
-    const coinId = tokenMapping[underlyingAddress];
-    if (!coinId) {
-      throw new Error(`Token mapping not found for coin at address ${underlyingAddress}`);
-    }
-    underlyingPriceBN = (await fetchCoinGeckoPriceBN(coinId)) * scaleFactor;
+    usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+    return (pricePerFullShareBN * underlyingPriceBN) / usdcPriceBN;
   }
   
-  const usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  // Otherwise, assume it's a regular ERC20
+  const erc20Contract = new ethers.Contract(underlyingAddress, erc20Abi, provider);
+  const underlyingDecimals = await erc20Contract.decimals();
+  const vaultDecimals = await beefyPoolContract.decimals();
+  const scaleFactor = BigInt(10) ** BigInt(vaultDecimals - underlyingDecimals);
   
-  return (pricePerFullShareBN * underlyingPriceBN) / usdcPriceBN;
+  const coinId = tokenMapping[underlyingAddress];
+  if (!coinId) {
+    throw new Error(`Token mapping not found for coin at address ${underlyingAddress}`);
+  }
+  
+  if (coinId !== USDC_COIN_ID) {
+    underlyingPriceBN = await fetchCoinGeckoPriceBN(coinId);
+    usdcPriceBN = await fetchCoinGeckoPriceBN(USDC_COIN_ID);
+  }
+  
+  return (pricePerFullShareBN * underlyingPriceBN * scaleFactor) / usdcPriceBN;
 }
 
 module.exports = { getBeefyPoolAssetPrice };
